@@ -876,6 +876,8 @@ https://stathead.com/sport/basketball/?&amp;utm_medium=sr_xsite&amp;utm_source=b
 <td class=""><a href="/players/s/smithjr01.html">J. Smith</a> misses 2-pt jump shot from 5 ft</td><td class=""> </td><td class="center">0-0</td><td> </td><td> </td>
 </tr>
 <tr>
+<td> </td><td> </td><td class="center">8-8</td><td class=""> </td><td class=""><a href="/players/j/jefferi01.html">A. Iguodala</a> enters the game for <a href="/players/l/loveke01.html">F. Ezeli</a></td>
+
 <td>11:36.0</td>
 <td> </td><td> </td><td class="center">0-0</td><td class=""> </td><td class="">Defensive rebound by <a href="/players/c/curryst01.html">S. Curry</a></td>
 </tr>
