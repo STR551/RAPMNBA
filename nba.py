@@ -2,6 +2,15 @@ import requests
 
 from bs4 import BeautifulSoup
 
+class Player():
+
+    def __init__(self,name):
+        self.name = name
+        self.min = 0
+        self.pd = 0
+
+globalStatD = {}
+
 
 def getRequestContentPBP(url,filename):
     url = "https://www.basketball-reference.com/boxscores/pbp/"+url
@@ -48,7 +57,7 @@ def printfile(fileName):
     except IOError as e:
         print(f"An error occurred while reading the file: {e}")
 
-def processGame(filename,pD):
+def processGame(filename):
     wFile = open("s2.txt","w")
 
     start = 0
@@ -56,41 +65,131 @@ def processGame(filename,pD):
     pList = {}
     team1 = pD[0]
     team2 = pD[1]
-    print(pD)
+    #print(pD)
+    #print()
     lineNum = -1
+    startTime = 0
+    score = 0
+    lastSubScore = 0
     with open(filename, 'r', encoding='utf-8') as file:
         for line in file:
             lineNum += 1
+            if lineNum == 1230:
+                #print("here")
+                pass
             if '<div class="section_heading"><span class="section_anchor" data-label="Team and League Schedules" data-no-inpage="1" id="inner_nav_bottom_link"></span><h2>Team and League Schedules</h2></div>' in line:
+                printGlob(pD)
                 break
-            if '<th aria-label="Time" class="center" data-sstat="Time">Time</th>' in line:
-                start = 1
             if '<th aria-label="Time" class="center" data-stat="Time">Time</th>' in line:
+                start = 1
                 pList = getStarters(filename,pD,lineNum)
-                print(pList)
+                #print(pList)
+                startTime = -1
             if start == 1 and line != '</tr>\n' and line != '<tr>\n':
+                isThere5Players = getTeamSum(pList,pD)
+                if len(pList) != 10:
+                    #print("not 10 players at line",lineNum)
+                    pass
+
                 if line.startswith("<td>") and line[4].isnumeric():
                     timeLine = line.strip("<td>").strip("</td>\n")
                     wFile.write(timeLine+"\n") 
+                    if startTime == -1:
+                        startTime = intTime(timeLine)
+                    prevTime = intTime(timeLine)
                 elif "enters" in line:
+                    s = line.split('center">')[1].split("<")[0]
+
+                    if getTeamSum(pList,pD) != 5:
+                        #print("not 5 players for team 1 at line",lineNum)
+                        pass
+                    #print(line)
+                    s = s.split('-')
+                    time = startTime - prevTime
+                    startTime = prevTime
+                    newScore = int(s[0])-int(s[1])
+                    #print(s[0]+'-'+s[1])
+                    pd = newScore - lastSubScore
+                    #print("oldScore:",score,"newScore:",newScore,"pd:",pd,time)
+                    score = newScore
+                    lastSubScore = newScore
+
+                    for p in pList:
+                        if p not in globalStatD:
+                            globalStatD[p] = Player(p)
+                        globalStatD[p].min += time
+                        if pD[p] == 0:
+                        
+                            globalStatD[p].pd += pd
+                        else:
+                        
+                            globalStatD[p].pd -= pd
+                        #getSumGlob(pD)
+
+                    #printGlob(pD)
+
+                    pVar = line.split('<a href="/players/')
+
+                    pVar = pVar[1:]
+                    
+                    for i in range(len(pVar)):
+                        pVar[i] = pVar[i].split(">")[0][2:-6]
+                    #print("subs",pVar)
+                    ins = pVar[0]
+                    out = pVar[1]
+
+                    del pList[out]
+                    pList[ins] = pD[ins]
+                    score = newScore
+                
+                    
+
+                elif ("center'>" in line or 'center">' in line) and "End of" not in line:
+                    #print(line)
+                    a = line.split('center">')
+                    b = a[1]
+                    c = b.split('<')
+                    d = c[0]
+                    #print(d)
+                    s = d.split('-')
+                    newScore = int(s[0])-int(s[1])
+                    score = newScore
+                    
+
+
+
                     wFile.write("SUBSTITUIONNNNNNNNNNNNNNNN\n")
-            pVar = line.split('<a href="/players/')
-            if len(pVar) == 1:
-                pVar = []
-            else:
-                pVar = pVar[1:]
-            for i in range(len(pVar)):
-                pVar[i] = pVar[i].split(">")[0][2:-6]
-            
-            if start == 1 and pVar != []:
-                # wFile.write(line)
-                pass
-                #print(len(pVar),pVar)
+                elif 'End of' in line:
+                    #print("end of")
+                    #print(score)
+                    #print(line)
+                    #print(startTime)
+                    #newScore = int(s[0])-int(s[1])
+                    #print(s[0]+'-'+s[1])
+
+                    pd = score - lastSubScore
+                    #print(pd)
+                    lastSubScore = newScore
+
+                    for p in pList:
+                        if p not in globalStatD:
+                            globalStatD[p] = Player(p)
+                        globalStatD[p].min += time
+                        if pD[p] == 0:
+                        
+                            globalStatD[p].pd += pd
+                        else:
+                        
+                            globalStatD[p].pd -= pd
+                    #printGlob(pD)
+                    score = newScore
+
+                    pass
+        
 
 def processRoster(filename):
     
     wFile = open("1111.txt","w")
-    pD = {}
     start = 0
     with open(filename, 'r', encoding='utf-8') as file:
         start = 0
@@ -118,11 +217,10 @@ def processRoster(filename):
                     if p not in pD:
                         pD[p] = tc
                     wFile.write(p+"\n")
-       
-        return pD
-                # wFile.write(line)
+                       # wFile.write(line)
 
 def getStarters(filename,pd,lineNum):
+    notStarters = {}
     wFile = open("starters.txt","w")
     onCourt = {}
     num = 0
@@ -130,8 +228,9 @@ def getStarters(filename,pd,lineNum):
     with open(filename, 'r', encoding='utf-8') as file:
         for line in file:
             num += 1
-            if num > lineNum:
-                start = 1
+            if num == 246:
+                #print("here")
+                pass
             if start == 1 and line != '</tr>\n' and line != '<tr>\n':
                 pVar = line.split('<a href="/players/')
                 if len(pVar) == 1:
@@ -142,16 +241,27 @@ def getStarters(filename,pd,lineNum):
                 for i in range(len(pVar)):
                     pVar[i] = pVar[i].split(">")[0][2:-6]
 
+                #do something add to oncourt
+                #enter game and not in on court = add to not starter
+                # enter game and on court = dont add to start
+                # leave game add to on court
                
                 
 
                 if len(pVar) != 0:
-                    for player in pVar:
-                        onCourt[player] = pD[player]
+                    
                     if "enters" in line:
-                        print("SUBSTITUIONNNNNNNNNNNNNNNN  ",end="")
-                        del onCourt[pVar[1]]
-                        onCourt[pVar[0]] = pD[pVar[0]]
+                        ##print("SUBSTITUIONNNNNNNNNNNNNNNN  ",end="")
+                        if pVar[0] not in onCourt:
+                            notStarters[pVar[0]] = 1
+                        if pVar[1] not in notStarters:
+                            onCourt[pVar[1]] = pD[pVar[1]]
+                        #print(onCourt)
+                    else:
+                        for player in pVar:
+                            if player not in notStarters:
+                                onCourt[player] = pD[player]
+                            #print(onCourt)
 
                     if (len(onCourt) == 10):
                         # print(onCourt)
@@ -159,23 +269,60 @@ def getStarters(filename,pd,lineNum):
                 
 
                     pass
+            if num == lineNum:
+                start = 1
+            #print(onCourt)
            
+def intTime(s):
+    s = s.split(":")
+    return int(s[0])*60+float(s[1])
+
+def getSumGlob(pD):
+    team1Score = 0
+    team2Score = 0
+    for p in globalStatD:
+        if pD[p] == 0:
+            team1Score += globalStatD[p].pd
+    print("team1 up by",team1Score)
+
+def printGlob(pD):
+    team1Score = 0
+    team2Score = 0
+    for p in globalStatD:
+        if pD[p] == 0:
+            team1Score += globalStatD[p].pd
+        else:
+            team2Score += globalStatD[p].pd
+        print(p,globalStatD[p].min,globalStatD[p].pd)
+    print("team1 up by",team1Score/5)
+
+def getTeamSum(pList,pD):
+    num = 0
+    for p in pList:
+        if pD[p] == 0:
+            num += 1
+    return num
 
 
-url = "201606190GSW.html"
-pbpFile = "pbp.txt"
-roster = "roster.txt"
-saveFile = "save.txt"
+def series(filename):
+    with open(filename, 'r', encoding='utf-8') as file:
+        for line in file:
+            url = line.strip("\n")
+            pbpFile = "pbp.txt"
+            roster = "roster.txt"
+            saveFile = "save.txt"
+            print(url)
+            getRequestContentPBP(url,pbpFile)
+            getRequestContentRoster(url,roster)
 
-#getRequestContentPBP(url,pbpFile)
-#getRequestContentRoster(url,roster)
+            processRoster(roster)
 
-pD = processRoster(roster)
+            #printfile(filename)
+            processGame(pbpFile)
+            pD= {}
 
-#printfile(filename)
-processGame(pbpFile,pD)
-
-
+pD = {}
+series("games.txt")
 
 # {0: 'CLE', 'jamesle01': 0, 'irvinky01': 0, 'smithjr01': 0, 'thomptr01': 0, 'loveke01': 0, 'jefferi01': 0, 'shumpim01': 0, 'willima01': 0, 'dellama01': 0, 'fryech01': 0, 'jonesda02': 0, 'jonesja02': 0, 'mozgoti01': 0, 1: 'GSW', 'greendr01': 1, 'thompkl01': 1, 'curryst01': 1, 'barneha02': 1, 'ezelife01': 1, 'iguodan01': 1, 'livinsh01': 1, 'varejan01': 1, 'speigma01': 1, 'barbole01': 1, 'clarkia01': 1, 'mcadoja01': 1, 'rushbr01': 1}
 # SUBSTITUIONNNNNNNNNNNNNNNN  
