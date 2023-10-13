@@ -8,6 +8,12 @@ class Player():
         self.name = name
         self.min = 0
         self.pd = 0
+        self.oPD = 0
+        self.dPD = 0
+        self.teammates = {}
+        self.opponents = {}
+        self.net = 0
+        self.newNet = 0
 
 globalStatD = {}
 
@@ -57,7 +63,7 @@ def printfile(fileName):
     except IOError as e:
         print(f"An error occurred while reading the file: {e}")
 
-def processGame(filename):
+def processGame(filename,pD):
     wFile = open("s2.txt","w")
 
     start = 0
@@ -70,7 +76,11 @@ def processGame(filename):
     lineNum = -1
     startTime = 0
     score = 0
+    offScore = 0
+    defScore = 0
     lastSubScore = 0
+    lastSubOff = 0
+    lastSubDef = 0
     with open(filename, 'r', encoding='utf-8') as file:
         for line in file:
             lineNum += 1
@@ -78,11 +88,12 @@ def processGame(filename):
                 #print("here")
                 pass
             if '<div class="section_heading"><span class="section_anchor" data-label="Team and League Schedules" data-no-inpage="1" id="inner_nav_bottom_link"></span><h2>Team and League Schedules</h2></div>' in line:
-                printGlob(pD)
+                #printGlob(pD)
                 break
             if '<th aria-label="Time" class="center" data-stat="Time">Time</th>' in line:
                 start = 1
                 pList = getStarters(filename,pD,lineNum)
+                #pList = {"speigma01":1,"clarkia01":1,"ezelife01":1,"barbole01":1,"rushbr01":1,"jonesda02":0,"willima01":0,"mozgoti01":0,"fryech01":0,"jonesja02":0}
                 #print(pList)
                 startTime = -1
             if start == 1 and line != '</tr>\n' and line != '<tr>\n':
@@ -107,12 +118,26 @@ def processGame(filename):
                     s = s.split('-')
                     time = startTime - prevTime
                     startTime = prevTime
+
                     newScore = int(s[0])-int(s[1])
+                    newScoreOff = int(s[0])
+                    newScoreDef = int(s[1])
+
                     #print(s[0]+'-'+s[1])
+
                     pd = newScore - lastSubScore
+                    offPD = newScoreOff - lastSubOff
+                    defPD = newScoreDef - lastSubDef
+
                     #print("oldScore:",score,"newScore:",newScore,"pd:",pd,time)
                     score = newScore
+                    offScore = newScoreOff
+                    defScore = newScoreDef
+
+
                     lastSubScore = newScore
+                    lastSubOff = newScoreOff
+                    lastSubDef = newScoreDef
 
                     for p in pList:
                         if p not in globalStatD:
@@ -121,9 +146,27 @@ def processGame(filename):
                         if pD[p] == 0:
                         
                             globalStatD[p].pd += pd
+                            globalStatD[p].oPD += offPD
+                            globalStatD[p].dPD += defPD
+
                         else:
                         
                             globalStatD[p].pd -= pd
+                            globalStatD[p].oPD += defPD
+                            globalStatD[p].dPD += offPD
+
+                        for p2 in pList:
+                            if p != p2:
+                                if pD[p] == pD[p2]:
+                                    if p2 not in globalStatD[p].teammates:
+                                        globalStatD[p].teammates[p2] = time
+                                    else:
+                                        globalStatD[p].teammates[p2] += time
+                                else:
+                                    if p2 not in globalStatD[p].opponents:
+                                        globalStatD[p].opponents[p2] = time
+                                    else:
+                                        globalStatD[p].opponents[p2] += time
                         #getSumGlob(pD)
 
                     #printGlob(pD)
@@ -140,7 +183,10 @@ def processGame(filename):
 
                     del pList[out]
                     pList[ins] = pD[ins]
+                    
                     score = newScore
+                    offScore = newScoreOff
+                    defScore = newScoreDef
                 
                     
 
@@ -152,8 +198,16 @@ def processGame(filename):
                     d = c[0]
                     #print(d)
                     s = d.split('-')
+
+
                     newScore = int(s[0])-int(s[1])
+                    newScoreOff = int(s[0])
+                    newScoreDef = int(s[1])
+
+
                     score = newScore
+                    offScore = newScoreOff
+                    defScore = newScoreDef
                     
 
 
@@ -168,27 +222,52 @@ def processGame(filename):
                     #print(s[0]+'-'+s[1])
 
                     pd = score - lastSubScore
+                    offPD = offScore - lastSubOff
+                    defPD = defScore - lastSubDef
+
+                    
                     #print(pd)
                     lastSubScore = newScore
+                    lastSubOff = newScoreOff
+                    lastSubDef = newScoreDef
+
 
                     for p in pList:
                         if p not in globalStatD:
                             globalStatD[p] = Player(p)
-                        globalStatD[p].min += time
+                        globalStatD[p].min += startTime
                         if pD[p] == 0:
-                        
+          
                             globalStatD[p].pd += pd
+                            globalStatD[p].oPD += offPD
+                            globalStatD[p].dPD += defPD
                         else:
                         
                             globalStatD[p].pd -= pd
+                            globalStatD[p].oPD += defPD
+                            globalStatD[p].dPD += offPD
+                        for p2 in pList:
+                            if p != p2:
+                                if pD[p] == pD[p2]:
+                                    if p2 not in globalStatD[p].teammates:
+                                        globalStatD[p].teammates[p2] = startTime
+                                    else:
+                                        globalStatD[p].teammates[p2] += startTime
+                                else:
+                                    if p2 not in globalStatD[p].opponents:
+                                        globalStatD[p].opponents[p2] = startTime
+                                    else:
+                                        globalStatD[p].opponents[p2] += startTime
                     #printGlob(pD)
                     score = newScore
+                    offScore = newScoreOff
+                    defScore = newScoreDef
 
                     pass
         
 
 def processRoster(filename):
-    
+    pD = {}
     wFile = open("1111.txt","w")
     start = 0
     with open(filename, 'r', encoding='utf-8') as file:
@@ -198,6 +277,7 @@ def processRoster(filename):
         tc = -1
         for line in file:
             if '<!-- global.nonempty_tables_num: 3, table_count: 3 -->' in line:
+                return pD
                 break
             if '<div class="table_wrapper" id="all_box-' in line:
                 start = 1
@@ -219,7 +299,7 @@ def processRoster(filename):
                     wFile.write(p+"\n")
                        # wFile.write(line)
 
-def getStarters(filename,pd,lineNum):
+def getStarters(filename,pD,lineNum):
     notStarters = {}
     wFile = open("starters.txt","w")
     onCourt = {}
@@ -289,10 +369,11 @@ def printGlob(pD):
     team1Score = 0
     team2Score = 0
     for p in globalStatD:
-        if pD[p] == 0:
-            team1Score += globalStatD[p].pd
-        else:
-            team2Score += globalStatD[p].pd
+        if p in pD:
+            if pD[p] == 0:
+                team1Score += globalStatD[p].pd
+            else:
+                team2Score += globalStatD[p].pd
         print(p,globalStatD[p].min,globalStatD[p].pd)
     print("team1 up by",team1Score/5)
 
@@ -311,17 +392,54 @@ def series(filename):
             pbpFile = "pbp.txt"
             roster = "roster.txt"
             saveFile = "save.txt"
+            
             print(url)
             getRequestContentPBP(url,pbpFile)
             getRequestContentRoster(url,roster)
 
-            processRoster(roster)
+            pD = processRoster(roster)
 
             #printfile(filename)
-            processGame(pbpFile)
-            pD= {}
+            processGame(pbpFile,pD)
+        for p in globalStatD:
+            globalStatD[p].net = globalStatD[p].pd/(globalStatD[p].min/48/60)
 
-pD = {}
+        for i in range(1):
+            updateValues()
+            print("\n\n\n\n")
+
+
+
+
+def updateValues():
+
+    for p in globalStatD:
+        #print("Player:",p,"Minutes:",round(globalStatD[p].min),"Net Rating:",round(globalStatD[p].pd),globalStatD[p].teammates,globalStatD[p].opponents)
+        tPM = 0
+        tMin = 0
+        oPM = 0
+        oMin = 0
+        for t in globalStatD[p].teammates:
+            tMin += globalStatD[p].teammates[t]
+            tPM += globalStatD[t].net*globalStatD[p].teammates[t]
+        for t in globalStatD[p].opponents:
+            oMin += globalStatD[p].opponents[t]
+            oPM += globalStatD[t].net*globalStatD[p].opponents[t]
+
+        netrating = globalStatD[p].net
+        tm = tPM/tMin/2#*4/5/2
+        o = oPM/oMin/2#*5/5
+        globalStatD[p].newNet = globalStatD[p].net-tm+o
+
+
+        print("Player:",p,"Minutes:",round(globalStatD[p].min),"Net Rating:",round(netrating,1),"Teamates:",round(tm,1),"Opps:",round(o,1),"SRS",round(globalStatD[p].newNet))#,round(globalStatD[p].oPD/(globalStatD[p].min/48/60),1),round(globalStatD[p].dPD/(globalStatD[p].min/48/60),1))#,globalStatD[p].teammates,globalStatD[p].opponents)
+
+
+    for p in globalStatD:
+        globalStatD[p].net = globalStatD[p].newNet
+
+                
+
 series("games.txt")
 
 # {0: 'CLE', 'jamesle01': 0, 'irvinky01': 0, 'smithjr01': 0, 'thomptr01': 0, 'loveke01': 0, 'jefferi01': 0, 'shumpim01': 0, 'willima01': 0, 'dellama01': 0, 'fryech01': 0, 'jonesda02': 0, 'jonesja02': 0, 'mozgoti01': 0, 1: 'GSW', 'greendr01': 1, 'thompkl01': 1, 'curryst01': 1, 'barneha02': 1, 'ezelife01': 1, 'iguodan01': 1, 'livinsh01': 1, 'varejan01': 1, 'speigma01': 1, 'barbole01': 1, 'clarkia01': 1, 'mcadoja01': 1, 'rushbr01': 1}
