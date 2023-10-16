@@ -1,3 +1,4 @@
+import time
 import requests
 
 from bs4 import BeautifulSoup
@@ -14,6 +15,8 @@ class Player():
         self.opponents = {}
         self.net = 0
         self.newNet = 0
+        self.offNet = 0
+        self.defNet = 0
 
 globalStatD = {}
 
@@ -139,6 +142,8 @@ def processGame(filename,pD):
                     lastSubOff = newScoreOff
                     lastSubDef = newScoreDef
 
+
+                    getDataPoint(pD,pList,pd,time)
                     for p in pList:
                         if p not in globalStatD:
                             globalStatD[p] = Player(p)
@@ -154,6 +159,7 @@ def processGame(filename,pD):
                             globalStatD[p].pd -= pd
                             globalStatD[p].oPD += defPD
                             globalStatD[p].dPD += offPD
+
 
                         for p2 in pList:
                             if p != p2:
@@ -231,6 +237,7 @@ def processGame(filename,pD):
                     lastSubOff = newScoreOff
                     lastSubDef = newScoreDef
 
+                    getDataPoint(pD,pList,pd,startTime)
 
                     for p in pList:
                         if p not in globalStatD:
@@ -388,10 +395,16 @@ def getTeamSum(pList,pD):
 def series(filename):
     with open(filename, 'r', encoding='utf-8') as file:
         for line in file:
+            if line == "\n":
+                continue
             url = line.strip("\n")
+            if url in gamesDoneDict:
+                #print("in already")
+                continue
             pbpFile = "pbp.txt"
             roster = "roster.txt"
             saveFile = "save.txt"
+            gamesDone.write(url+"\n")
             
             print(url)
             getRequestContentPBP(url,pbpFile)
@@ -401,14 +414,35 @@ def series(filename):
 
             #printfile(filename)
             processGame(pbpFile,pD)
+
+            time.sleep(5)
+
         for p in globalStatD:
             globalStatD[p].net = globalStatD[p].pd/(globalStatD[p].min/48/60)
+            globalStatD[p].net = globalStatD[p].pd/(globalStatD[p].min/48/60)
+
 
         for i in range(1):
             updateValues()
             print("\n\n\n\n")
 
+        
 
+
+def getDataPoint(pD,pList,pd,startTime):
+    pString = ""
+    t = ""
+    if startTime != 0:
+        for p in pList:
+            if pD[p] == 0:
+                t = "1"
+            else:
+                t = "-1"
+            pString += str(p)+":"+t+","
+        pString += str(pd/(startTime/60)*48)+","+str(startTime)+"\n"
+        saveFile.write(pString)
+    
+    
 
 
 def updateValues():
@@ -432,14 +466,30 @@ def updateValues():
         globalStatD[p].newNet = globalStatD[p].net-tm+o
 
 
-        print("Player:",p,"Minutes:",round(globalStatD[p].min),"Net Rating:",round(netrating,1),"Teamates:",round(tm,1),"Opps:",round(o,1),"SRS",round(globalStatD[p].newNet))#,round(globalStatD[p].oPD/(globalStatD[p].min/48/60),1),round(globalStatD[p].dPD/(globalStatD[p].min/48/60),1))#,globalStatD[p].teammates,globalStatD[p].opponents)
+        #print("Player:",p,"Minutes:",round(globalStatD[p].min),"+/-:",round(netrating,1),"Teamates:",round(tm,1),"Opps:",round(o,1),"SRS",round(globalStatD[p].newNet))#,round(globalStatD[p].oPD/(globalStatD[p].min/48/60),1),round(globalStatD[p].dPD/(globalStatD[p].min/48/60),1))#,globalStatD[p].teammates,globalStatD[p].opponents)
+        print("Player:",p,"Minutes:",round(globalStatD[p].min//60),"+/-:",globalStatD[p].pd)#,round(globalStatD[p].oPD/(globalStatD[p].min/48/60),1),round(globalStatD[p].dPD/(globalStatD[p].min/48/60),1))#,globalStatD[p].teammates,globalStatD[p].opponents)
 
 
     for p in globalStatD:
         globalStatD[p].net = globalStatD[p].newNet
 
-                
+    
+def getDoneGames():
+    file = open("gamesDone.txt","r")
+    d = set()
+    for line in file:
+        line = line.strip("\n")
+        d.add(line)
+    print(d)
+    file.close()
+    return d
 
+
+
+
+gamesDoneDict = getDoneGames()
+gamesDone = open("gamesDone.txt","a")
+saveFile = open("saveFile.txt","a")
 series("games.txt")
 
 # {0: 'CLE', 'jamesle01': 0, 'irvinky01': 0, 'smithjr01': 0, 'thomptr01': 0, 'loveke01': 0, 'jefferi01': 0, 'shumpim01': 0, 'willima01': 0, 'dellama01': 0, 'fryech01': 0, 'jonesda02': 0, 'jonesja02': 0, 'mozgoti01': 0, 1: 'GSW', 'greendr01': 1, 'thompkl01': 1, 'curryst01': 1, 'barneha02': 1, 'ezelife01': 1, 'iguodan01': 1, 'livinsh01': 1, 'varejan01': 1, 'speigma01': 1, 'barbole01': 1, 'clarkia01': 1, 'mcadoja01': 1, 'rushbr01': 1}
