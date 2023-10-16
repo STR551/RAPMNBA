@@ -1,8 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
+#import pymc3 as pm
+
 
 file = open("saveFile.txt",'r')
+
 
                     # Target (dependent variable)
 
@@ -13,15 +16,24 @@ s = {}
 np.set_printoptions(threshold=np.inf)
 
 
-minMinutes = 10
+minMinutes = 100
 
 lineCount = 0
 c = 0
 for line in file:
+    game = line.split(",")[-3]
     line = line.split(",")[:12]
+    
+    if ".html" in line[-1]:
+        print("data point offf")
+        continue
+    
     time = int(float(line[-1].strip("\n")))
+    
     if time < 0:
         print("hello")
+
+
     pd = int(float(line[-2]))
     line = line[:10]
     for l in line:
@@ -29,14 +41,19 @@ for line in file:
         team = l[1]
         l = l[0]
         if l not in s:
-            s[l] = [c,0,0]
+            s[l] = [c,0,0,set()]
             c+=1
 
         s[l][1] += time
         if team == '1':
-            s[l][2] +=  pd*time/60/48
+            s[l][2] +=  pd
         else:
-            s[l][2] -=  pd*time/60/48
+            s[l][2] -=  pd
+        if game not in s[l][3]:
+            s[l][3].add(game)
+            if "embiijo" in l:
+                print(len(s[l][3]),game)
+
 
     lineCount+=1
 qualifiedPlayersD = {}
@@ -44,10 +61,11 @@ qualifiedPlayersD = {}
 qualPCount = 0
 for player in s:
     #print(player,round(s[player][1]/60))
-    if s[player][1] > minMinutes * 60:
+    #if s[player][1] > minMinutes * 60:
+    if (s[player][1]/60)/(len(s[player][3])+4.1) > 20:
         qualifiedPlayersD[player] = qualPCount
         qualPCount+=1
-
+    #print(player,round(s[player][1]/60),s[player][2],len(s[player][3]))
 
 
 #print(len(qualifiedPlayersD))
@@ -174,8 +192,15 @@ for coef, feature  in sorted(zip( model.coef_, qualifiedPlayersList),reverse = T
         print(f" {pv} {feature}: {round((coef-mean) / std_dev,1)} ")    
         pass
     else:
-        print(f" {pv} {feature}: {round((coef-mean) / std_dev,1)} {round(s[feature][1]/60)} ")
+        #print(f" {pv} {feature}: {round((coef-mean) / std_dev,1)} {round(s[feature][1]/60)} {round(s[feature][2])} {(len(s[feature][3]))} {round((s[feature][1]/60)/(len(s[feature][3])+4))}")
+        adjSRS = s[feature][2]/(s[feature][1]/60)*48
+        if (s[feature][1]/60)/(len(s[feature][3])+4) <20:
+            adjSRS *= (s[feature][1]/60)/(len(s[feature][3])+4)/20 
+        #if s[feature][1]/60 > 500:
+        print(f" {pv} {feature}: {round((coef-mean) / std_dev,1)}  {round(adjSRS,1)} {(len(s[feature][3]))} {round((s[feature][1]/60)/(len(s[feature][3])+4))}")
+
         pv += 1
+        
         sList.append([(coef-mean) / std_dev * s[feature][1]/60,feature])
 
 i = 0
@@ -185,4 +210,7 @@ for p in sorted(sList,reverse=True):
 
 print(pv)
 
+
+
 #model.predict()
+

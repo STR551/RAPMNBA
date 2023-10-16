@@ -66,7 +66,7 @@ def printfile(fileName):
     except IOError as e:
         print(f"An error occurred while reading the file: {e}")
 
-def processGame(filename,pD):
+def processGame(filename,pD,game):
     wFile = open("s2.txt","w")
 
     start = 0
@@ -74,37 +74,22 @@ def processGame(filename,pD):
     pList = {}
     team1 = pD[0]
     team2 = pD[1]
-    #print(pD)
-    #print()
     lineNum = -1
     startTime = 0
     score = 0
-    offScore = 0
-    defScore = 0
     lastSubScore = 0
-    lastSubOff = 0
-    lastSubDef = 0
     with open(filename, 'r', encoding='utf-8') as file:
         for line in file:
             lineNum += 1
-            if lineNum == 1230:
-                #print("here")
-                pass
             if '<div class="section_heading"><span class="section_anchor" data-label="Team and League Schedules" data-no-inpage="1" id="inner_nav_bottom_link"></span><h2>Team and League Schedules</h2></div>' in line:
                 #printGlob(pD)
                 break
             if '<th aria-label="Time" class="center" data-stat="Time">Time</th>' in line:
                 start = 1
                 pList = getStarters(filename,pD,lineNum)
-                #pList = {"speigma01":1,"clarkia01":1,"ezelife01":1,"barbole01":1,"rushbr01":1,"jonesda02":0,"willima01":0,"mozgoti01":0,"fryech01":0,"jonesja02":0}
-                #print(pList)
                 startTime = -1
             if start == 1 and line != '</tr>\n' and line != '<tr>\n':
                 isThere5Players = getTeamSum(pList,pD)
-                if len(pList) != 10:
-                    #print("not 10 players at line",lineNum)
-                    pass
-
                 if line.startswith("<td>") and line[4].isnumeric():
                     timeLine = line.strip("<td>").strip("</td>\n")
                     wFile.write(timeLine+"\n") 
@@ -113,69 +98,15 @@ def processGame(filename,pD):
                     prevTime = intTime(timeLine)
                 elif "enters" in line:
                     s = line.split('center">')[1].split("<")[0]
-
-                    if getTeamSum(pList,pD) != 5:
-                        #print("not 5 players for team 1 at line",lineNum)
-                        pass
-                    #print(line)
                     s = s.split('-')
                     time = startTime - prevTime
                     startTime = prevTime
-
                     newScore = int(s[0])-int(s[1])
-                    newScoreOff = int(s[0])
-                    newScoreDef = int(s[1])
-
-                    #print(s[0]+'-'+s[1])
-
                     pd = newScore - lastSubScore
-                    offPD = newScoreOff - lastSubOff
-                    defPD = newScoreDef - lastSubDef
-
-                    #print("oldScore:",score,"newScore:",newScore,"pd:",pd,time)
                     score = newScore
-                    offScore = newScoreOff
-                    defScore = newScoreDef
-
-
                     lastSubScore = newScore
-                    lastSubOff = newScoreOff
-                    lastSubDef = newScoreDef
 
-
-                    getDataPoint(pD,pList,pd,time)
-                    for p in pList:
-                        if p not in globalStatD:
-                            globalStatD[p] = Player(p)
-                        globalStatD[p].min += time
-                        if pD[p] == 0:
-                        
-                            globalStatD[p].pd += pd
-                            globalStatD[p].oPD += offPD
-                            globalStatD[p].dPD += defPD
-
-                        else:
-                        
-                            globalStatD[p].pd -= pd
-                            globalStatD[p].oPD += defPD
-                            globalStatD[p].dPD += offPD
-
-
-                        for p2 in pList:
-                            if p != p2:
-                                if pD[p] == pD[p2]:
-                                    if p2 not in globalStatD[p].teammates:
-                                        globalStatD[p].teammates[p2] = time
-                                    else:
-                                        globalStatD[p].teammates[p2] += time
-                                else:
-                                    if p2 not in globalStatD[p].opponents:
-                                        globalStatD[p].opponents[p2] = time
-                                    else:
-                                        globalStatD[p].opponents[p2] += time
-                        #getSumGlob(pD)
-
-                    #printGlob(pD)
+                    getDataPoint(pD,pList,pd,time,game,team1,team2)
 
                     pVar = line.split('<a href="/players/')
 
@@ -183,7 +114,6 @@ def processGame(filename,pD):
                     
                     for i in range(len(pVar)):
                         pVar[i] = pVar[i].split(">")[0][2:-6]
-                    #print("subs",pVar)
                     ins = pVar[0]
                     out = pVar[1]
 
@@ -191,8 +121,6 @@ def processGame(filename,pD):
                     pList[ins] = pD[ins]
                     
                     score = newScore
-                    offScore = newScoreOff
-                    defScore = newScoreDef
                 
                     
 
@@ -202,73 +130,28 @@ def processGame(filename,pD):
                     b = a[1]
                     c = b.split('<')
                     d = c[0]
-                    #print(d)
                     s = d.split('-')
 
 
                     newScore = int(s[0])-int(s[1])
-                    newScoreOff = int(s[0])
-                    newScoreDef = int(s[1])
-
-
                     score = newScore
-                    offScore = newScoreOff
-                    defScore = newScoreDef
+
                     
 
 
 
                     wFile.write("SUBSTITUIONNNNNNNNNNNNNNNN\n")
                 elif 'End of' in line:
-                    #print("end of")
-                    #print(score)
-                    #print(line)
-                    #print(startTime)
-                    #newScore = int(s[0])-int(s[1])
-                    #print(s[0]+'-'+s[1])
+
 
                     pd = score - lastSubScore
-                    offPD = offScore - lastSubOff
-                    defPD = defScore - lastSubDef
+                    lastSubScore = newScore
+
+                    getDataPoint(pD,pList,pd,startTime,game,team1,team2)
 
                     
-                    #print(pd)
-                    lastSubScore = newScore
-                    lastSubOff = newScoreOff
-                    lastSubDef = newScoreDef
-
-                    getDataPoint(pD,pList,pd,startTime)
-
-                    for p in pList:
-                        if p not in globalStatD:
-                            globalStatD[p] = Player(p)
-                        globalStatD[p].min += startTime
-                        if pD[p] == 0:
-          
-                            globalStatD[p].pd += pd
-                            globalStatD[p].oPD += offPD
-                            globalStatD[p].dPD += defPD
-                        else:
-                        
-                            globalStatD[p].pd -= pd
-                            globalStatD[p].oPD += defPD
-                            globalStatD[p].dPD += offPD
-                        for p2 in pList:
-                            if p != p2:
-                                if pD[p] == pD[p2]:
-                                    if p2 not in globalStatD[p].teammates:
-                                        globalStatD[p].teammates[p2] = startTime
-                                    else:
-                                        globalStatD[p].teammates[p2] += startTime
-                                else:
-                                    if p2 not in globalStatD[p].opponents:
-                                        globalStatD[p].opponents[p2] = startTime
-                                    else:
-                                        globalStatD[p].opponents[p2] += startTime
-                    #printGlob(pD)
                     score = newScore
-                    offScore = newScoreOff
-                    defScore = newScoreDef
+
 
                     pass
         
@@ -392,30 +275,43 @@ def getTeamSum(pList,pD):
     return num
 
 
+
+
 def series(filename):
+
     with open(filename, 'r', encoding='utf-8') as file:
         for line in file:
-            if line == "\n":
+            try:
+                if line == "\n":
+                    continue
+                url = line.strip("\n")
+                if url in gamesDoneDict:
+                    #print("in already")
+                    continue
+                pbpFile = "pbp.txt"
+                roster = "roster.txt"
+                saveFile = "save.txt"
+
+                gamesDone = open("gamesDone.txt","a")
+
+                gamesDone.write(url+"\n")
+
+                gamesDone.close()
+                
+                print(url)
+                getRequestContentPBP(url,pbpFile)
+                getRequestContentRoster(url,roster)
+
+                pD = processRoster(roster)
+
+                #printfile(filename)
+                processGame(pbpFile,pD,url)
+
+                time.sleep(5)
+            except KeyError as e:
+                print("key error for"+url)
+                keyerrorFiles.write(line+"/n")
                 continue
-            url = line.strip("\n")
-            if url in gamesDoneDict:
-                #print("in already")
-                continue
-            pbpFile = "pbp.txt"
-            roster = "roster.txt"
-            saveFile = "save.txt"
-            gamesDone.write(url+"\n")
-            
-            print(url)
-            getRequestContentPBP(url,pbpFile)
-            getRequestContentRoster(url,roster)
-
-            pD = processRoster(roster)
-
-            #printfile(filename)
-            processGame(pbpFile,pD)
-
-            time.sleep(5)
 
         for p in globalStatD:
             globalStatD[p].net = globalStatD[p].pd/(globalStatD[p].min/48/60)
@@ -429,7 +325,7 @@ def series(filename):
         
 
 
-def getDataPoint(pD,pList,pd,startTime):
+def getDataPoint(pD,pList,pd,startTime,game,team1,team2):
     pString = ""
     t = ""
     if startTime != 0:
@@ -439,7 +335,8 @@ def getDataPoint(pD,pList,pd,startTime):
             else:
                 t = "-1"
             pString += str(p)+":"+t+","
-        pString += str(pd/(startTime/60)*48)+","+str(startTime)+"\n"
+        pString += str(pd)+","+str(startTime)
+        pString += ","+game+","+team1+","+team2+"\n"
         saveFile.write(pString)
     
     
@@ -480,13 +377,13 @@ def getDoneGames():
     for line in file:
         line = line.strip("\n")
         d.add(line)
-    print(d)
+    #print(d)
     file.close()
     return d
 
 
 
-
+keyerrorFiles = open("keyErrors.txt","a")
 gamesDoneDict = getDoneGames()
 gamesDone = open("gamesDone.txt","a")
 saveFile = open("saveFile.txt","a")
@@ -499,3 +396,4 @@ series("games.txt")
 # {'ezelife01': 1, 'loveke01': 0, 'smithjr01': 0, 'greendr01': 1, 'thomptr01': 0, 'jamesle01': 0, 'thompkl01': 1, 'curryst01': 1, 'irvinky01': 0, 'barneha02': 1}    
 # SUBSTITUIONNNNNNNNNNNNNNNN  SUBSTITUIONNNNNNNNNNNNNNNN  SUBSTITUIONNNNNNNNNNNNNNNN  SUBSTITUIONNNNNNNNNNNNNNNN  
 # {'jamesle01': 0, 'iguodan01': 1, 'barneha02': 1, 'thompkl01': 1, 'jefferi01': 0, 'curryst01': 1, 'greendr01': 1, 'thomptr01': 0, 'smithjr01': 0, 'irvinky01': 0}
+
